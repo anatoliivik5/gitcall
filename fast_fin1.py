@@ -5,9 +5,9 @@ import pandas as pd
 from datetime import datetime, timedelta
 import requests
 import logging
+from config import settings
 
-
-# uvicorn fast_fin1:app --host 0.0.0.0 --port 8000
+# uvicorn fast_fin11:app --host 0.0.0.0 --port 8001
 app = FastAPI()
 
 # Устанавливаем базовый уровень логирования на INFO
@@ -24,23 +24,22 @@ class Payload(BaseModel):
 @app.post("/process-data/")
 async def process_data(payload: Payload):
     # Получаем параметры из запроса
-    date_from = payload.date_from
-    date_to = payload.date_to
-    # Преобразуем дату в нужный формат ISO 8601
-    date_from = datetime.strptime(date_from, "%d.%m.%Y").strftime("%Y-%m-%dT00:00:00Z")
-    date_to = datetime.strptime(date_to, "%d.%m.%Y").strftime("%Y-%m-%dT23:59:59Z")
+    # Дату в нужный формат ISO 8601
+    date_from = datetime.strptime(payload.date_from, "%d.%m.%Y").strftime("%Y-%m-%dT00:00:00Z")
+    date_to = datetime.strptime(payload.date_to, "%d.%m.%Y").strftime("%Y-%m-%dT23:59:59Z")
     userId = payload.userId
-    phone_client = payload.phone_client
     # Удаляем всё, что идет после первого разделителя запятой в номере телефона
-    phone_client = phone_client.split(",")[0].strip()
+    phone_client = payload.phone_client.split(",")[0].strip()
     duration_call_minut = payload.duration_call_minut
-    userId = int(userId)
     duration_call_minut = int(duration_call_minut)
-
+    duration_call = duration_call_minut * 60 * 1000  # Переводим в миллисекунды
 
     # Создаем DataFrame на основе параметров
-    url = 'https://cloudpbx.beeline.ru/apis/portal/records'
-    headers = {"/////..."}
+    url = settings.beeline_api_url
+    print(url)
+    headers = {"X-MPBX-API-AUTH-TOKEN": settings.beeline_api_auth_token}
+    print(headers)
+
     list_of_dict = []
     params = {
         'userId': userId,
@@ -84,7 +83,7 @@ async def process_data(payload: Payload):
     list_id_call_all = []
     count_phone_client = 0
     calls_more_minute = 0
-    duration_call = duration_call_minut * 60 * 1000  # Переводим в миллисекунды
+
     # Собираем данные по номеру телефона клиента и длительности разговора.
     # Если номер телефона клиента не найден в звонках, отбор только по длительности.
     for i in list_of_dict:
